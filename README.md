@@ -33,7 +33,7 @@ volumes:
 
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+docker pull ghcr.io/clubifaximatic/code-with-claude:latest
 ```
 
 ## Environment Variables
