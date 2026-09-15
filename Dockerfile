@@ -32,8 +32,8 @@ RUN set -eux; \
 #
 # new user
 #
-RUN groupadd --gid ${USER_GID} dev \
-    && useradd --uid ${USER_UID} --gid ${USER_GID} -m -s /bin/bash dev \
+RUN groupadd --non-unique --gid ${USER_GID} dev \
+    && useradd --non-unique --uid ${USER_UID} --gid ${USER_GID} -m -s /bin/bash dev \
     && mkdir -p /workspace \
     && chown -R dev:dev /workspace
 
