@@ -1,0 +1,53 @@
+FROM ubuntu:26.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+ARG TARGETARCH=amd64
+ARG USER_UID=1000
+ARG USER_GID=1000
+
+ENV TZ=UTC
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    git \
+    build-essential \
+    tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
+#
+# install Visual Studio Code (as root)
+#
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+      amd64) VSCODE_ARCH="cli-alpine-x64" ;; \
+      arm64) VSCODE_ARCH="cli-alpine-arm64" ;; \
+      *) echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSL "https://code.visualstudio.com/sha/download?build=stable&os=${VSCODE_ARCH}" --output /tmp/vscode-cli.tar.gz; \
+    tar -xzf /tmp/vscode-cli.tar.gz -C /usr/local/bin; \
+    rm /tmp/vscode-cli.tar.gz; \
+    chmod +x /usr/local/bin/code
+
+#
+# new user
+#
+RUN groupadd --gid ${USER_GID} dev \
+    && useradd --uid ${USER_UID} --gid ${USER_GID} -m -s /bin/bash dev \
+    && mkdir -p /workspace \
+    && chown -R dev:dev /workspace
+
+USER dev
+ENV PATH="/home/dev/.local/bin:${PATH}"
+
+#
+# install Visual Studio Code (as dev)
+#
+RUN curl -fsSL https://claude.ai/install.sh | bash
+
+COPY --chown=dev:dev scripts/entrypoint.sh /home/dev/entrypoint.sh
+RUN chmod +x /home/dev/entrypoint.sh
+
+WORKDIR /workspace
+
+ENTRYPOINT ["/home/dev/entrypoint.sh"]
