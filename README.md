@@ -43,6 +43,9 @@ docker pull ghcr.io/clubifaximatic/code-with-claude:latest
 
 * MACHINE_NAME: (optional) The name of the remote machine. Default value: "dev-container-${HOSTNAME}"
 * ANTHROPIC_API_KEY: (optional) Your Anthropic Claude ApiKey. Default value: null
+* GIT_USER_NAME: (optional) Sets `git config --global user.name` on every container start. Needed to make commits.
+* GIT_USER_EMAIL: (optional) Sets `git config --global user.email` on every container start. Needed to make commits.
+* GITHUB_TOKEN: (optional) A GitHub [personal access token](https://github.com/settings/tokens). Needed to `git push`/`git clone` over HTTPS to private repos, or to push to any repo at all.
 
 ## Which way should I authenticate Claude Code?
 
@@ -74,6 +77,35 @@ you already pay for:
 > API usage billed through a subscription. Simply omit (or comment out) the
 > `ANTHROPIC_API_KEY` line in `.env` to make sure your Pro/Max plan is what
 > covers usage.
+
+## Pushing to GitHub
+
+By default `git push`/`git clone` over HTTPS to a private repo will prompt
+for credentials it has no way to collect (this is a non-interactive
+container). To fix it, set `GITHUB_TOKEN`:
+
+1. Create a [personal access token](https://github.com/settings/tokens) —
+   a fine-grained token scoped to just the repo(s) you need is safer than a
+   classic token with broad scope:
+   * **Fine-grained token**: pick the specific repo(s), then under
+     **Repository permissions** set **Contents: Read and write** — that's
+     the only permission needed for clone/pull/push.
+   * **Classic token**: check the **`repo`** scope (or the narrower
+     **`public_repo`** if you only push to public repos).
+2. Put it in `.env`: `GITHUB_TOKEN=github_pat_...`
+3. Recreate the container. On start, `entrypoint.sh` configures
+   `credential.helper store` and writes `~/.git-credentials` for
+   `github.com` automatically — `git push`/`git pull` over HTTPS just work,
+   no further setup needed.
+
+**Security note:** the token is written to `/home/dev/.git-credentials` in
+plaintext (mode `600`, readable only by `dev`) — it is not in a persisted
+volume, so it's rewritten from `.env` on every start and disappears if the
+container is removed without that `.env`. It's still readable by anything
+that can exec into the container, and `GITHUB_TOKEN` itself is visible via
+`docker inspect`/`/proc/*/environ` to anything with access to the host.
+Treat this NAS/container the same way you'd treat a machine holding a
+real credential, and scope the token as narrowly as GitHub allows.
 
 ## Register
 
@@ -112,3 +144,6 @@ your code should live.
 - On a NAS, you can replace the `workspace` named volume with a bind mount
   (e.g. `/volume1/projects:/workspace`) to browse/backup your code directly
   from the NAS file browser instead of Docker's internal volume storage.
+- `GIT_USER_NAME`/`GIT_USER_EMAIL` only set your commit identity — they
+  don't authenticate you to push to a remote. Set `GITHUB_TOKEN` for that
+  (see below).
